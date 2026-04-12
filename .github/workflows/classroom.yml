@@ -1,0 +1,60 @@
+name: Autograding Tests
+on:
+  - push
+  - workflow_dispatch
+permissions:
+  checks: write
+  actions: read
+  contents: read
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Structure Test
+      id: structure-test
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: "Interface & Encapsulation"
+        setup-command: "mvn compile"
+        command: "mvn test -Dtest=PaymentTest#testIsInterface,PaymentTest#testPrivateFields"
+        timeout: 2
+        max-score: 30
+
+    - name: Logic Test
+      id: logic-test
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: "Payment Implementations"
+        setup-command: "mvn compile"
+        command: "mvn test -Dtest=PaymentTest#testCreditCardImplementation,PaymentTest#testPayPalImplementation"
+        timeout: 2
+        max-score: 40
+
+    - name: Poly Test
+      id: poly-test
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: "Polymorphism Check"
+        setup-command: "mvn compile"
+        command: "mvn test -Dtest=PaymentTest#testPolymorphicList"
+        timeout: 2
+        max-score: 30
+
+    - name: Autograding Reporter
+      uses: classroom-resources/autograding-grading-reporter@v1
+      env:
+        STRUCTURE-TEST_RESULTS: "${{ steps.structure-test.outputs.result }}"
+        LOGIC-TEST_RESULTS: "${{ steps.logic-test.outputs.result }}"
+        POLY-TEST_RESULTS: "${{ steps.poly-test.outputs.result }}"
+      with:
+        runners: structure-test, logic-test, poly-test
